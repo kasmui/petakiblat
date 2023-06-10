@@ -1,0 +1,187 @@
+<!--        AIzaSyAATj04FZVxMmpwYZm05sLxKzUd7YVb8Jw 
+var defaultLatitude = -7.067428554781114;
+var defaultLongitude = 110.40256955623626;    
+-->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peta Arah Kiblat</title>
+    <meta name="description" content="Peta Penentuan Arah Kiblat" />
+    <link rel="shortcut icon" href="https://blogchem.com/moonphase/moon.png">
+    <style>
+        #map-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 75%;
+            height: 600px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        #search-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #search-input {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <center>
+    <div id="map-container">
+        <h1>Peta Arah Kiblat</h1>
+        <div id="search-form">
+            <input type="text" id="search-input" placeholder="Latitude, Longitude or City Name">
+            <button onclick="searchLocation()">CARI</button>
+        </div>
+        <div id="map"></div>
+    </div>
+    </center>
+    <script>
+        var map;
+        var marker;
+        var infoWindow;
+        var qiblaLine;
+
+        function initMap() {
+            // Default latitude dan longitude tempat tertentu
+            var defaultLatitude = -7.067428554781114;
+            var defaultLongitude = 110.40256955623626;
+
+            // Membuat peta dengan posisi tengah pada latitude dan longitude default
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: defaultLatitude, lng: defaultLongitude },
+                zoom: 12,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                    position: google.maps.ControlPosition.TOP_LEFT
+                },
+                streetViewControl: true,
+                fullscreenControl: true,
+                labels: true,
+                heading: 90,
+                tilt: 45
+            });
+
+            // Menambahkan penanda (marker) default pada peta 
+            marker = new google.maps.Marker({
+                position: { lat: defaultLatitude, lng: defaultLongitude },
+                map: map,
+                draggable: true,
+                title: 'Geser penanda ini ke tempat lain.'
+            });
+
+            // Menambahkan garis arah kiblat
+            qiblaLine = new google.maps.Polyline({
+                geodesic: true,
+                strokeColor: '#FF0000',
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                map: map
+            });
+
+            // Inisialisasi garis arah kiblat
+            updateQiblaLine(defaultLatitude, defaultLongitude);
+
+            // Keterangan ketinggian tempat default
+            infoWindow = new google.maps.InfoWindow();
+
+            var elevationService = new google.maps.ElevationService();
+            var defaultLocation = new google.maps.LatLng(defaultLatitude, defaultLongitude);
+            elevationService.getElevationForLocations({ 'locations': [defaultLocation] }, function (results, status) {
+                if (status === 'OK') {
+                    if (results[0]) {
+                        var elevation = results[0].elevation;
+                        var content = 'Ketinggian: ' + elevation.toFixed(2) + ' meter<br>Latitude: ' + defaultLatitude + '<br>Longitude: ' + defaultLongitude + '<br>Waktu GMT: ' + new Date().toUTCString();
+
+                        infoWindow.setContent(content);
+                        infoWindow.open(map, marker);
+                    } else {
+                        window.alert('Tidak ada data ketinggian yang tersedia.');
+                    }
+                } else {
+                    window.alert('Gagal mendapatkan data ketinggian. Error: ' + status);
+                }
+            });
+
+            // Event listener untuk menggeser marker dan memperbarui keterangan serta garis arah kiblat
+            marker.addListener('dragend', function () {
+                var newPosition = marker.getPosition();
+                updateLocationInfo(newPosition);
+                updateQiblaLine(newPosition.lat(), newPosition.lng());
+            });
+
+            // Event listener untuk memunculkan/menyembunyikan keterangan ketika marker diklik
+            marker.addListener('click', function () {
+                if (infoWindow.getMap()) {
+                    infoWindow.close();
+                } else {
+                    infoWindow.open(map, marker);
+                }
+            });
+        }
+
+        function searchLocation() {
+            var searchInput = document.getElementById('search-input').value;
+
+            // Menggunakan Geocoder untuk mendapatkan koordinat latitude dan longitude berdasarkan input pengguna
+            var geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: searchInput }, function (results, status) {
+                if (status === 'OK' && results[0]) {
+                    var latitude = results[0].geometry.location.lat();
+                    var longitude = results[0].geometry.location.lng();
+
+                    var newPosition = new google.maps.LatLng(latitude, longitude);
+
+                    // Memperbarui peta dengan posisi baru
+                    map.setCenter(newPosition);
+                    marker.setPosition(newPosition);
+                    updateQiblaLine(latitude, longitude);
+
+                    // Memperbarui keterangan lokasi
+                    updateLocationInfo(newPosition);
+                } else {
+                    window.alert('Geocoder tidak dapat menemukan lokasi yang valid.');
+                }
+            });
+        }
+
+        function updateLocationInfo(position) {
+            var elevationService = new google.maps.ElevationService();
+            elevationService.getElevationForLocations({ 'locations': [position] }, function (results, status) {
+                if (status === 'OK') {
+                    if (results[0]) {
+                        var elevation = results[0].elevation;
+                        var content = 'Ketinggian: ' + elevation.toFixed(2) + ' meter<br>Latitude: ' + position.lat() + '<br>Longitude: ' + position.lng() + '<br>Waktu GMT: ' + new Date().toUTCString(); 
+
+                        infoWindow.setContent(content);
+                        infoWindow.open(map, marker);
+                    } else {
+                        window.alert('Tidak ada data ketinggian yang tersedia.');
+                    }
+                } else {
+                    window.alert('Gagal mendapatkan data ketinggian. Error: ' + status);
+                }
+            });
+        }
+
+        function updateQiblaLine(latitude, longitude) {
+            var qiblaLocation = new google.maps.LatLng(21.4225, 39.8262);
+            qiblaLine.setPath([new google.maps.LatLng(latitude, longitude), qiblaLocation]);
+        }
+    </script>
+
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAATj04FZVxMmpwYZm05sLxKzUd7YVb8Jw&libraries=geometry&callback=initMap"></script>
+</body>
+</html>
